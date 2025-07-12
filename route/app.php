@@ -15,3 +15,6 @@ Route::get('think', function () {
 });
 
 Route::get('hello/:name', 'index/hello');
+
+// 一些展示
+Route::rule('info/vip_level', 'info.VipLevel/vip_level');
