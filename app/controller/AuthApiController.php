@@ -59,9 +59,32 @@ abstract class AuthApiController extends BaseApiController
                 'exp' => $payload->exp ?? null
             ];
             
-            // 检查token是否过期
-            if (isset($payload->exp) && time() > $payload->exp) {
+            // **核心逻辑：检查Token剩余时间并处理**
+            $currentTime = time();
+            $expireTime = $payload->exp ?? 0;
+            $remainingTime = $expireTime - $currentTime; // 计算剩余时间
+            $configExpireTime = (int)($_ENV['JWT_EXPIRE_TIME'] ?? 3600); // 获取配置时间
+            
+            if ($remainingTime <= 0) {
+                // 情况3：Token已过期，提示重新登录
                 throw new \Exception('Token已过期');
+            } elseif ($remainingTime < $configExpireTime) {
+                // 情况1：剩余时间不足配置时间，自动续期
+                $this->extendToken($payload, $secretKey, $algorithm, $issuer, $configExpireTime);
+                
+                Log::debug('Token自动续期', [
+                    'user_id' => $this->userId,
+                    'remaining_time' => $remainingTime . '秒',
+                    'config_time' => $configExpireTime . '秒',
+                    'action' => '续期到' . $configExpireTime . '秒'
+                ]);
+            } else {
+                // 情况2：剩余时间充足，不处理
+                Log::debug('Token时间充足，无需续期', [
+                    'user_id' => $this->userId,
+                    'remaining_time' => $remainingTime . '秒',
+                    'config_time' => $configExpireTime . '秒'
+                ]);
             }
             
             Log::debug('User authenticated successfully', [
@@ -77,6 +100,54 @@ abstract class AuthApiController extends BaseApiController
             ]);
             
             return $this->error('登录已过期，请重新登录',401,[]);
+        }
+    }
+    
+    /**
+     * 延长Token有效期
+     * @param object $payload JWT载荷
+     * @param string $secretKey 密钥
+     * @param string $algorithm 算法
+     * @param string $issuer 发行者
+     * @param int $configExpireTime 配置的过期时间
+     */
+    protected function extendToken($payload, $secretKey, $algorithm, $issuer, $configExpireTime)
+    {
+        try {
+            $now = time();
+            
+            // 构建新的Token载荷（保持原有信息，只更新过期时间）
+            $newPayload = [
+                'iss' => $payload->iss ?? $issuer,           // 保持原发行者
+                'sub' => $payload->sub ?? null,              // 保持原用户ID
+                'iat' => $payload->iat ?? $now,              // 保持原发行时间
+                'exp' => $now + $configExpireTime,           // **重新设定有效期：当前时间 + 配置时间**
+                'loginsec' => $payload->loginsec ?? $now     // 保持原登录时间
+            ];
+            
+            // 生成新的Token
+            $newToken = JWT::encode($newPayload, $secretKey, $algorithm);
+            
+            // 通过响应头返回新Token
+            header('Authorization: Bearer ' . $newToken);
+            header('X-Token-Extended: 1');
+            
+            // 更新当前实例的用户信息
+            $this->userInfo['exp'] = $now + $configExpireTime;
+            
+            Log::info('Token续期成功', [
+                'user_id' => $this->userId,
+                'old_expire_time' => date('Y-m-d H:i:s', $payload->exp ?? 0),
+                'new_expire_time' => date('Y-m-d H:i:s', $now + $configExpireTime),
+                'extended_duration' => $configExpireTime . '秒'
+            ]);
+            
+        } catch (\Exception $e) {
+            // 续期失败不影响正常业务，只记录日志
+            Log::warning('Token续期失败', [
+                'user_id' => $this->userId,
+                'error' => $e->getMessage()
+            ]);
         }
     }
     
