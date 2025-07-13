@@ -15,8 +15,8 @@ class Menu extends PublicApiController
      */
     public function index()
     {
-        $list = $this->model->where(['pid' => 0, 'status' => 1])->order('sort asc')->paginate()->each(function ($item, $key) {
-            $item->children = $this->model->where(['pid' => $item['id'], 'status' => 1])->order('sort asc')->select();
+        $list = Db::name('common_agent_menu')->where(['pid' => 0, 'status' => 1])->order('sort asc')->select()->each(function ($item, $key) {
+            $item->children = Db::name('common_agent_menu')->where(['pid' => $item['id'], 'status' => 1])->order('sort asc')->select();
         });
         //处理栏目树
         $this->success($list);
