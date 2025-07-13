@@ -6,14 +6,14 @@ use think\facade\Db;
 use think\facade\Log;
 use think\Request;
 
-class MemberDepositRecord extends AuthApiController
+class MemberWithdrawalRecord extends AuthApiController
 {
     /**
-     * 获取会员存款记录
+     * 获取会员取款记录
      * @param Request $request
      * @return \think\Response
      */
-    public function get_member_deposit_record(Request $request)
+    public function get_member_withdrawal_record(Request $request)
     {
         try {
             // 获取当前登录代理信息
@@ -48,7 +48,7 @@ class MemberDepositRecord extends AuthApiController
                     'limit' => $limit
                 ]);
             }
-            $where[] = ['r.user_id', 'in', $memberIds];
+            $where[] = ['w.u_id', 'in', $memberIds];
 
             // 用户名筛选
             if (!empty($username)) {
@@ -57,35 +57,41 @@ class MemberDepositRecord extends AuthApiController
 
             // 时间范围筛选
             if (!empty($startDate)) {
-                $where[] = ['r.create_time', '>=', $startDate . ' 00:00:00'];
+                $where[] = ['w.create_time', '>=', $startDate . ' 00:00:00'];
             }
             if (!empty($endDate)) {
-                $where[] = ['r.create_time', '<=', $endDate . ' 23:59:59'];
+                $where[] = ['w.create_time', '<=', $endDate . ' 23:59:59'];
             }
 
             // 查询总数
-            $total = Db::table('ntp_common_pay_recharge')
-                ->alias('r')
-                ->leftJoin('ntp_common_user u', 'r.user_id = u.id')
+            $total = Db::table('ntp_common_pay_withdraw')
+                ->alias('w')
+                ->leftJoin('ntp_common_user u', 'w.u_id = u.id')
+                ->leftJoin('ntp_common_pay_methods pm', 'w.pay_type = pm.method_code')
                 ->where($where)
                 ->count();
 
             // 查询列表数据
-            $list = Db::table('ntp_common_pay_recharge')
-                ->alias('r')
-                ->leftJoin('ntp_common_user u', 'r.user_id = u.id')
+            $list = Db::table('ntp_common_pay_withdraw')
+                ->alias('w')
+                ->leftJoin('ntp_common_user u', 'w.u_id = u.id')
+                ->leftJoin('ntp_common_pay_methods pm', 'w.pay_type = pm.method_code')
                 ->field([
-                    'r.id',
-                    'r.user_id',
+                    'w.id',
+                    'w.u_id',
                     'u.name as username',
-                    'r.money',
-                    'r.create_time',
-                    'r.success_time',
-                    'r.status',
-                    'r.remark'
+                    'w.money',
+                    'w.money_fee',
+                    'w.momey_actual',  // 注意：字段名拼写错误但按实际表结构使用
+                    'w.pay_type',
+                    'pm.method_name as pay_method_name',
+                    'w.create_time',
+                    'w.success_time',
+                    'w.status',
+                    'w.msg'
                 ])
                 ->where($where)
-                ->order('r.create_time', 'desc')
+                ->order('w.create_time', 'desc')
                 ->limit(($page - 1) * $limit, $limit)
                 ->select()
                 ->toArray();
@@ -93,9 +99,13 @@ class MemberDepositRecord extends AuthApiController
             // 格式化数据
             foreach ($list as &$item) {
                 $item['money'] = number_format($item['money'], 2);
+                $item['money_fee'] = number_format($item['money_fee'] ?? 0, 2);
+                $item['momey_actual'] = number_format($item['momey_actual'] ?? 0, 2);
                 $item['status_text'] = $this->getStatusText($item['status']);
+                $item['pay_method_name'] = $item['pay_method_name'] ?: $item['pay_type']; // 如果没有找到对应的支付方式名称，显示原始代码
                 $item['create_time'] = $item['create_time'] ?: '';
                 $item['success_time'] = $item['success_time'] ?: '';
+                $item['msg'] = $item['msg'] ?: '';
             }
 
             return $this->success([
@@ -106,7 +116,7 @@ class MemberDepositRecord extends AuthApiController
             ]);
 
         } catch (\Exception $e) {
-            Log::error('获取会员存款记录失败: ' . $e->getMessage());
+            Log::error('获取会员取款记录失败: ' . $e->getMessage());
             return $this->error('获取数据失败，请稍后重试', 500);
         }
     }
