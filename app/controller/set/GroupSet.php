@@ -23,12 +23,12 @@ class GroupSet extends AuthApiController
             // 优先使用 HTTP_HOST，如果没有则使用 domain()
             $currentDomain = !empty($httpHost) ? $httpHost : parse_url($requestDomain, PHP_URL_HOST);
             
-            Log::info('获取集团配置请求', [
+            Log::info('获取集团配置请求: ' . json_encode([
                 'request_domain' => $requestDomain,
                 'http_host' => $httpHost,
                 'current_domain' => $currentDomain,
                 'full_url' => $this->request->url(true)
-            ]);
+            ]));
             
             if (empty($currentDomain)) {
                 return $this->error('无法获取请求域名');
@@ -50,10 +50,10 @@ class GroupSet extends AuthApiController
                     ->where('status', 1)
                     ->find();
                 
-                Log::info('第二次匹配尝试', [
+                Log::info('第二次匹配尝试: ' . json_encode([
                     'domain_only' => $domainOnly,
                     'found' => !empty($groupConfig)
-                ]);
+                ]));
             }
             
             if (!$groupConfig) {
@@ -61,12 +61,12 @@ class GroupSet extends AuthApiController
             }
             
             // 记录匹配成功的日志
-            Log::info('成功匹配到集团配置', [
+            Log::info('成功匹配到集团配置: ' . json_encode([
                 'group_prefix' => $groupConfig['group_prefix'],
                 'group_name' => $groupConfig['group_name'],
                 'agent_url' => $groupConfig['agent_url'],
                 'matched_domain' => $currentDomain
-            ]);
+            ]));
             
             // 构建返回数据
             $result = [
@@ -97,12 +97,12 @@ class GroupSet extends AuthApiController
             return $this->success($result, '获取集团配置成功');
             
         } catch (\Exception $e) {
-            Log::error('获取集团配置失败', [
+            Log::error('获取集团配置失败: ' . json_encode([
                 'error' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString()
-            ]);
+            ]));
             
             return $this->error('获取集团配置失败：' . $e->getMessage());
         }
