@@ -15,7 +15,7 @@ class GroupSet extends AuthApiController
     {
         try {
             // 获取前端请求的域名
-            $requestDomain = $this->request->domain();
+            $requestDomain = $this->request->param('url', '');
             
             // 也可以通过 HTTP_HOST 头获取
             $httpHost = $this->request->header('host', '');
