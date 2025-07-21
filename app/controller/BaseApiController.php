@@ -46,6 +46,8 @@ abstract class BaseApiController extends BaseController
         $groupPrefixAttempts = [
             'group_prefix' => $this->request->header('group_prefix'),
             'Group_prefix' => $this->request->header('Group_prefix'),
+            'group-prefix' => $this->request->header('group-prefix'),
+            'Group-prefix' => $this->request->header('Group-prefix'),
         ];
         
         // 遍历获取第一个非空值
