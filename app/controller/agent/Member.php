@@ -45,6 +45,7 @@ class Member extends AuthApiController
                     'created_at',
                     'money',
                     'money_rebate',
+                    'money_fanyong',
                     'vip_grade'
                 ])
                 ->where('group_prefix', $this->groupPrefix);
@@ -94,6 +95,7 @@ class Member extends AuthApiController
                     'created_at' => $item['created_at'],
                     'money' => number_format($item['money'], 2, '.', ''),
                     'money_rebate' => number_format($item['money_rebate'], 2, '.', ''),
+                    'money_fanyong' => number_format($item['money_fanyong'], 2, '.', ''),
                     'vip_grade' => intval($item['vip_grade'])
                 ];
             }
