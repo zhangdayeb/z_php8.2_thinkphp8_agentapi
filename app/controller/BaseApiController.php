@@ -38,45 +38,32 @@ abstract class BaseApiController extends BaseController
     }
     
     /**
-     * 提取请求参数 - 参考 Register 控制器的逻辑
+     * 提取请求参数 - 优化 group_prefix 获取逻辑
      */
     protected function extractRequestParams()
     {
-        // 尝试多种方式获取 group_prefix
+        // 尝试获取 group_prefix（只保留两种常见格式）
         $groupPrefixAttempts = [
-            'property' => $this->groupPrefix,
             'group_prefix' => $this->request->header('group_prefix'),
-            'group-prefix' => $this->request->header('group-prefix'),
             'Group_prefix' => $this->request->header('Group_prefix'),
-            'Group-Prefix' => $this->request->header('Group-Prefix'),
-            'GROUP_PREFIX' => $this->request->header('GROUP_PREFIX'),
-            'GROUP-PREFIX' => $this->request->header('GROUP-PREFIX'),
-            'groupprefix' => $this->request->header('groupprefix'),
-            'GroupPrefix' => $this->request->header('GroupPrefix'),
         ];
         
-        // 如果通过属性获取不到，尝试直接获取并设置
-        if (empty($this->groupPrefix)) {
-            foreach ($groupPrefixAttempts as $key => $value) {
-                if (!empty($value) && $key !== 'property') {
-                    $this->groupPrefix = $value;
-                    Log::info("通过 {$key} 获取到 group_prefix", ['value' => $value]);
-                    break;
-                }
-            }
-            
-            // 如果还是为空，设置默认值
-            if (empty($this->groupPrefix)) {
-                $this->groupPrefix = 'DHYL'; // 设置默认值
-                Log::info('使用默认 group_prefix', ['default_value' => 'DHYL']);
+        // 遍历获取第一个非空值
+        foreach ($groupPrefixAttempts as $key => $value) {
+            if ($value !== null && $value !== '') {
+                $this->groupPrefix = $value;
+                Log::info("通过 {$key} 获取到 group_prefix", ['value' => $value]);
+                break;
             }
         }
+        
+        // 记录最终结果（无论是否为空）
+        Log::info('最终 group_prefix', ['group_prefix' => $this->groupPrefix]);
         
         // 获取 authorization 头
         $this->authHeader = $this->getHeaderValue([
             'authorization',
-            'Authorization',
-            'AUTHORIZATION'
+            'Authorization'
         ]);
         
         $this->token = str_replace('Bearer ', '', $this->authHeader);
@@ -127,12 +114,15 @@ abstract class BaseApiController extends BaseController
             'ip' => $this->request->ip(),
             'user_agent' => $this->request->header('user-agent', ''),
             'url' => $this->request->url(true),
-            'all_headers' => $allHeaders // 完整的请求头信息（仅调试时启用）
         ]);
         
         // 如果获取到了 group_prefix，记录成功信息
         if (!empty($this->groupPrefix)) {
             Log::info('Group Prefix 获取成功', [
+                'group_prefix' => $this->groupPrefix
+            ]);
+        } else {
+            Log::info('Group Prefix 为空', [
                 'group_prefix' => $this->groupPrefix
             ]);
         }
