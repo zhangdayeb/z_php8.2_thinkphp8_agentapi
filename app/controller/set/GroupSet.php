@@ -16,16 +16,10 @@ class GroupSet extends AuthApiController
         try {
             // 获取前端请求的域名
             $requestDomain = $this->request->param('url', '');
-            
-            // 也可以通过 HTTP_HOST 头获取
-            $httpHost = $this->request->header('host', '');
-            
-            // 优先使用 HTTP_HOST，如果没有则使用 domain()
-            $currentDomain = !empty($httpHost) ? $httpHost : parse_url($requestDomain, PHP_URL_HOST);
+            $currentDomain = parse_url($requestDomain, PHP_URL_HOST);
             
             Log::info('获取集团配置请求: ' . json_encode([
                 'request_domain' => $requestDomain,
-                'http_host' => $httpHost,
                 'current_domain' => $currentDomain,
                 'full_url' => $this->request->url(true)
             ]));
